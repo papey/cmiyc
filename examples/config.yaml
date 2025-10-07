@@ -1,0 +1,10 @@
+listen: "localhost:8042"
+routes:
+    /:
+      load_balancer_strategy: "single"
+      backends:
+        - url: "http://localhost:8080"
+    /api:
+      load_balancer_strategy: "single"
+      backends:
+        - url: "http://localhost:8080"
