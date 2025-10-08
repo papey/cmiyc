@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 
 	"github.com/papey/cmiyc/internal"
 )
@@ -19,11 +20,17 @@ func NewHttpClient() *HttpClient {
 }
 
 func (c *HttpClient) Proxify(r *http.Request, dest string) (*http.Response, error) {
-	req, err := http.NewRequest(r.Method, fmt.Sprintf("%s/%s", dest, r.URL.Path), r.Body)
+	backendURL, proxyURL, err := buildProxyURLs(r, dest)
 	if err != nil {
 		return nil, err
 	}
 
+	req, err := http.NewRequest(r.Method, proxyURL.String(), r.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Host = backendURL.Host
 	req.Header = c.buildHeaders(r)
 
 	resp, err := c.client.Do(req)
@@ -71,6 +78,7 @@ func (c *HttpClient) forwardHeaders(origin http.Header, dest http.Header) http.H
 
 func (c *HttpClient) addHeaders(r *http.Request, h http.Header) {
 	h.Add("Via", internal.VersionedName())
+	h.Set("X-Forwarded-Host", r.Host)
 
 	if clientIP, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		if prior := h.Get("X-Forwarded-For"); prior != "" {
@@ -85,4 +93,13 @@ func (c *HttpClient) addHeaders(r *http.Request, h http.Header) {
 	} else {
 		h.Set("X-Forwarded-Proto", "http")
 	}
+}
+
+func buildProxyURLs(r *http.Request, dest string) (*url.URL, *url.URL, error) {
+	backendURL, err := url.Parse(dest)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return backendURL, backendURL.ResolveReference(r.URL), nil
 }
