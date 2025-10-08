@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/papey/cmiyc/internal"
 )
@@ -15,8 +16,28 @@ type Client struct {
 }
 
 func NewClient() *Client {
+	transport := &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+		IdleConnTimeout:     90 * time.Second,
+
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 20 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+
+		ForceAttemptHTTP2: true,
+	}
+
 	return &Client{
-		client: &http.Client{},
+		client: &http.Client{
+			Transport: transport,
+			Timeout:   60 * time.Second,
+		},
 	}
 }
 
