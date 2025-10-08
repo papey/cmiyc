@@ -32,7 +32,6 @@ func (b *Balancer) handleRequest(w http.ResponseWriter, r *http.Request) {
 	err := b.client.ProxifyAndServe(w, r, c.Backend[0].URL)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "Error forwarding request", http.StatusBadGateway)
 		return
 	}
 }
