@@ -4,15 +4,15 @@
     <img src="LOGO.jpg" width="240" alt="logo"/>
 </p>
 
-A simple yet to come HTTP load balancer written in Go, configurable via YAML. ~~Supports multiple routes and backends with pluggable load balancing strategies.~~
+A simple yet to come HTTP load balancer written in Go, configurable via YAML. Supports multiple routes and backends ~~with pluggable load balancing strategies.~~
 
 ---
 
 ## Features
 
 - Configurable via YAML.
-- ~~Route requests based on URL path prefix.~~
-- ~~Single backend strategy (always picks the first backend).~~
+- Route requests based on URL path prefix matching.
+- Single backend strategy (always picks the first backend).
 - ~~Easy to extend with additional load balancing strategies.~~
 - ~~cache get requests~~
 - no `httputil.ReverseProxy` here.

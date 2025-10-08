@@ -23,9 +23,15 @@ func NewBalancer(cfg config.Config) *Balancer {
 }
 
 func (b *Balancer) handleRequest(w http.ResponseWriter, r *http.Request) {
-	c, found := b.config.GetConfigForRoute(r.URL.Path)
+	configuredRoute, found := b.config.GetPrioritizedMatchingRoute(r.URL.Path)
 	if !found {
 		http.Error(w, "Route not found", http.StatusNotFound)
+		return
+	}
+
+	c, ok := b.config.GetConfigForRoute(configuredRoute)
+	if !ok {
+		http.Error(w, "Route configuration not found", http.StatusNotFound)
 		return
 	}
 

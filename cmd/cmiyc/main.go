@@ -12,7 +12,7 @@ import (
 func main() {
 	configPath := parseArgs()
 
-	conf, err := config.ParseConfigurationFile(*configPath)
+	conf, err := config.BuildConfigurationFromFile(*configPath)
 	if err != nil {
 		log.Fatalf("Failed to parse configuration file: %v", err)
 	}
