@@ -1,22 +1,22 @@
 package balancer
 
 import (
-	"io"
 	"log"
 	"net/http"
 
 	"github.com/papey/cmiyc/internal/config"
+	"github.com/papey/cmiyc/internal/forwarder"
 )
 
 type Balancer struct {
 	config config.Config
-	client *HttpClient
+	client *forwarder.Client
 }
 
 func NewBalancer(cfg config.Config) *Balancer {
 	b := &Balancer{
 		config: cfg,
-		client: NewHttpClient(),
+		client: forwarder.NewClient(),
 	}
 
 	return b
@@ -29,18 +29,10 @@ func (b *Balancer) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := b.client.Proxify(r, c.Backend[0].URL)
+	err := b.client.ProxifyAndServe(w, r, c.Backend[0].URL)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "Error forwarding request", http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
-
-	_, err = io.Copy(w, resp.Body)
-	if err != nil {
-		log.Println(err)
-		http.Error(w, "Error reading response", http.StatusInternalServerError)
 		return
 	}
 }
