@@ -15,7 +15,7 @@ A simple yet to come HTTP reverse proxy & load balancer written in Go, configura
 - Supports graceful shutdown.
 - Single backend strategy (always picks the first backend).
 - ~~Easy to extend with additional load balancing strategies.~~
-- ~~cache get requests~~
+- Per configured route cache usage & configuration
 - no `httputil.ReverseProxy` here.
 
 ---

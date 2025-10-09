@@ -21,8 +21,10 @@ type Reverser struct {
 func NewReverser(cfg config.Config) *Reverser {
 	caches := make(map[string]*cache.HttpCache)
 
-	for k, _ := range cfg.Routes {
-		caches[k] = cache.NewEmptyCache()
+	for k, c := range cfg.Routes {
+		if c.CacheConfig.Enabled {
+			caches[k] = cache.NewEmptyCache()
+		}
 	}
 
 	r := &Reverser{
@@ -47,35 +49,68 @@ func (rev *Reverser) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	routeCache, cacheExists := rev.getCacheForRoute(matchingRoute)
-	if !cacheExists {
-		log.Printf("Cache for route %s not found", matchingRoute)
-	}
+	resp := cache.NewCachableResponse(w)
 
-	isRequestCachable := cache.IsRequestCachable(r.Method) && cacheExists
-	if isRequestCachable {
-		served, err := routeCache.ServeIfPresent(w, r)
-		if served {
+	if !c.CacheConfig.Enabled {
+		err := rev.proxyDirect(resp, r, c)
+		if err != nil {
+			log.Println(err)
 			return
 		}
 
+		return
+	}
+
+	routeCache, exists := rev.getCacheForRoute(matchingRoute)
+	if !exists {
+		err := rev.proxyDirect(resp, r, c)
 		if err != nil {
-			log.Println("Error serving from cache:", err)
+			log.Println(err)
+			return
+		}
+
+		return
+	}
+
+	err := rev.proxyCache(resp, r, c, routeCache)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
+func (rev *Reverser) proxyDirect(resp *cache.CachableResponse, r *http.Request, rc *config.Route) error {
+	if err := rev.client.ProxifyAndServe(resp, r, rc.Backends[0].URL); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (rev *Reverser) proxyCache(resp *cache.CachableResponse, r *http.Request, rc *config.Route, routeCache *cache.HttpCache) error {
+	isRequestCachable := cache.IsRequestCachable(r.Method)
+	if isRequestCachable {
+		served, err := routeCache.ServeIfPresent(resp.ResponseWriter, r)
+		if served {
+			return nil
+		}
+
+		if err != nil {
+			log.Println(err)
 		}
 	}
 
-	resp := cache.NewCachableResponse(w)
-	err := rev.client.ProxifyAndServe(resp, r, c.Backends[0].URL)
+	err := rev.client.ProxifyAndServe(resp, r, rc.Backends[0].URL)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 
 	contextAllowsCaching := isRequestCachable && ((withoutAuthorizationHeader(r) && resp.IsCachable()) || resp.IsCachableConsideringAuth())
 	if contextAllowsCaching {
-		cacheDuration := cacheDurationWithFallback(resp, 5*time.Minute)
+		cacheDuration := cacheDurationWithFallback(resp, time.Duration(rc.CacheConfig.TTL)*time.Second)
 		routeCache.Set(r, resp, time.Now().Add(cacheDuration))
 	}
+
+	return nil
 }
 
 func (rev *Reverser) getCacheForRoute(route string) (*cache.HttpCache, bool) {
