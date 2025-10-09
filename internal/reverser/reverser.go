@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/papey/cmiyc/internal/cache"
 	"github.com/papey/cmiyc/internal/config"
 	"github.com/papey/cmiyc/internal/forwarder"
 )
@@ -14,35 +15,70 @@ type Reverser struct {
 	config config.Config
 	client *forwarder.Client
 	server *http.Server
+	caches map[string]*cache.HttpCache
 }
 
 func NewReverser(cfg config.Config) *Reverser {
+	caches := make(map[string]*cache.HttpCache)
+
+	for k, _ := range cfg.Routes {
+		caches[k] = cache.NewEmptyCache()
+	}
+
 	r := &Reverser{
 		config: cfg,
 		client: forwarder.NewClient(),
+		caches: caches,
 	}
 
 	return r
 }
 
 func (rev *Reverser) handleRequest(w http.ResponseWriter, r *http.Request) {
-	configuredRoute, found := rev.config.GetPrioritizedMatchingRoute(r.URL.Path)
+	matchingRoute, found := rev.config.GetPrioritizedMatchingRoute(r.URL.Path)
 	if !found {
 		http.Error(w, "Route not found", http.StatusNotFound)
 		return
 	}
 
-	c, ok := rev.config.GetConfigForRoute(configuredRoute)
+	c, ok := rev.config.GetConfigForRoute(matchingRoute)
 	if !ok {
-		http.Error(w, "Route configuration not found", http.StatusNotFound)
+		http.Error(w, "Route configuration not found", http.StatusInternalServerError)
 		return
 	}
 
-	err := rev.client.ProxifyAndServe(w, r, c.Backends[0].URL)
+	routeCache, cacheExists := rev.getCacheForRoute(matchingRoute)
+	if !cacheExists {
+		log.Printf("Cache for route %s not found", matchingRoute)
+	}
+
+	isCachable := cache.IsCachableRequest(r) && cacheExists
+	if isCachable {
+		served, err := routeCache.ServeIfPresent(w, r)
+		if served {
+			return
+		}
+
+		if err != nil {
+			log.Println("Error serving from cache:", err)
+		}
+	}
+
+	resp := cache.NewCachableResponse(w)
+	err := rev.client.ProxifyAndServe(resp, r, c.Backends[0].URL)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+
+	if isCachable {
+		routeCache.Set(r, resp, time.Now().Add(5*time.Second))
+	}
+}
+
+func (rev *Reverser) getCacheForRoute(route string) (*cache.HttpCache, bool) {
+	c, exists := rev.caches[route]
+	return c, exists
 }
 
 func (rev *Reverser) Start() error {
