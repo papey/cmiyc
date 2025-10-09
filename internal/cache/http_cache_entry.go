@@ -6,11 +6,10 @@ import (
 )
 
 type Entry struct {
-	StatusCode  int
-	Body        []byte
-	Header      http.Header
-	LocalTimeFn func() time.Time
-	ExpiresAt   time.Time
+	StatusCode int
+	Body       []byte
+	Header     http.Header
+	ExpiresAt  time.Time
 }
 
 func NewEntry(request *http.Request, resp *CachableResponse, expiresAt time.Time) (Key, Entry) {
