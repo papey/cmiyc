@@ -21,6 +21,18 @@ func NewEntry(request *http.Request, resp *CachableResponse, expiresAt time.Time
 	}
 }
 
+func (entry *Entry) Clone() Entry {
+	bodyCopy := make([]byte, len(entry.Body))
+	copy(bodyCopy, entry.Body)
+
+	return Entry{
+		StatusCode: entry.StatusCode,
+		Body:       bodyCopy,
+		Header:     cloneHeader(entry.Header),
+		ExpiresAt:  entry.ExpiresAt,
+	}
+}
+
 func (entry *Entry) WriteResponse(w http.ResponseWriter, r *http.Request) error {
 	for key, values := range entry.Header {
 		for _, value := range values {

@@ -47,7 +47,7 @@ func (c *HttpCache) Get(r *http.Request) (Entry, bool) {
 		return Entry{}, false
 	}
 
-	return entry, exists
+	return entry.Clone(), exists
 }
 
 func (c *HttpCache) Set(r *http.Request, resp *CachableResponse, expiresAt time.Time) {
