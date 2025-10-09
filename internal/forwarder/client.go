@@ -42,7 +42,7 @@ func NewClient() *Client {
 }
 
 func (c *Client) ProxifyAndServe(w http.ResponseWriter, r *http.Request, dest string) error {
-	resp, err := c.Proxify(r, dest)
+	resp, err := c.proxify(r, dest)
 	if err != nil {
 		w.WriteHeader(http.StatusBadGateway)
 		_, _ = fmt.Fprintf(w, "Proxy error: %v", err)
@@ -63,7 +63,7 @@ func (c *Client) ProxifyAndServe(w http.ResponseWriter, r *http.Request, dest st
 	return err
 }
 
-func (c *Client) Proxify(r *http.Request, dest string) (*http.Response, error) {
+func (c *Client) proxify(r *http.Request, dest string) (*http.Response, error) {
 	backendURL, proxyURL, err := buildURLs(r, dest)
 	if err != nil {
 		return nil, err
