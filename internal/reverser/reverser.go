@@ -17,12 +17,12 @@ type Reverser struct {
 }
 
 func NewReverser(cfg config.Config) *Reverser {
-	b := &Reverser{
+	r := &Reverser{
 		config: cfg,
 		client: forwarder.NewClient(),
 	}
 
-	return b
+	return r
 }
 
 func (rev *Reverser) handleRequest(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +38,7 @@ func (rev *Reverser) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := rev.client.ProxifyAndServe(w, r, c.Backend[0].URL)
+	err := rev.client.ProxifyAndServe(w, r, c.Backends[0].URL)
 	if err != nil {
 		log.Println(err)
 		return

@@ -10,7 +10,7 @@ import (
 type LoadBalancerStrategy string
 
 const (
-	Single LoadBalancerStrategy = "single"
+	LBStrategySingle LoadBalancerStrategy = "single"
 )
 
 type Backend struct {
@@ -19,7 +19,7 @@ type Backend struct {
 
 type Route struct {
 	LoadBalancerType LoadBalancerStrategy `yaml:"load_balancer_strategy"`
-	Backend          []Backend            `yaml:"backends"`
+	Backends         []Backend            `yaml:"backends"`
 }
 
 type Config struct {
@@ -60,6 +60,14 @@ func BuildConfigurationFromFile(path string) (*Config, error) {
 	config.prioritizedRoutes = sortRoutesByLength(config.Routes)
 
 	return &config, err
+}
+
+func NewConfig(listen string, routes map[string]Route) Config {
+	return Config{
+		Listen:            listen,
+		Routes:            routes,
+		prioritizedRoutes: sortRoutesByLength(routes),
+	}
 }
 
 func sortRoutesByLength(routes map[string]Route) []string {
