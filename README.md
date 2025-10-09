@@ -51,6 +51,12 @@ make
 ./cmiyc -h
 ```
 
+## Run Test Suite
+
+```sh
+make validate
+```
+
 ## License
 
 See [LICENSE](LICENSE)
