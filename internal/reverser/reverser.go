@@ -52,8 +52,8 @@ func (rev *Reverser) handleRequest(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Cache for route %s not found", matchingRoute)
 	}
 
-	isCachable := cache.IsCachableRequest(r) && cacheExists
-	if isCachable {
+	isRequestCachable := cache.IsRequestCachable(r.Method) && cacheExists
+	if isRequestCachable {
 		served, err := routeCache.ServeIfPresent(w, r)
 		if served {
 			return
@@ -71,8 +71,10 @@ func (rev *Reverser) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if isCachable {
-		routeCache.Set(r, resp, time.Now().Add(5*time.Second))
+	contextAllowsCaching := isRequestCachable && ((withoutAuthorizationHeader(r) && resp.IsCachable()) || resp.IsCachableConsideringAuth())
+	if contextAllowsCaching {
+		cacheDuration := cacheDurationWithFallback(resp, 5*time.Minute)
+		routeCache.Set(r, resp, time.Now().Add(cacheDuration))
 	}
 }
 
@@ -103,4 +105,17 @@ func (rev *Reverser) Stop() error {
 
 	log.Println("Shutting down reverser...")
 	return rev.server.Shutdown(ctx)
+}
+
+func withoutAuthorizationHeader(r *http.Request) bool {
+	return r.Header.Get("Authorization") == ""
+}
+
+func cacheDurationWithFallback(resp *cache.CachableResponse, fallback time.Duration) time.Duration {
+	specified, value := resp.CacheTTL()
+	if specified {
+		return value
+	}
+
+	return fallback
 }
