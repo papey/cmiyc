@@ -95,7 +95,7 @@ func (c *HttpCache) autoCleanup(interval time.Duration) {
 		c.Lock()
 		for key, entry := range c.Entries {
 			if entry.IsExpired() {
-				c.delete(key)
+				delete(c.Entries, key)
 			}
 		}
 		c.Unlock()
