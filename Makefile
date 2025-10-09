@@ -14,5 +14,12 @@ build:
 run: build
 	$(BINARY)
 
+validate:
+	$(GOCMD) test ./...
+	$(GOCMD) vet ./...
+	$(GOCMD) fmt ./...
+	$(GOCMD) mod tidy
+	$(GOCMD) mod verify
+
 clean:
 	rm -rf $(BINDIR)
