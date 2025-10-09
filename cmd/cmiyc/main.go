@@ -1,12 +1,17 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/papey/cmiyc/internal/balancer"
 	"github.com/papey/cmiyc/internal/config"
+	"github.com/papey/cmiyc/internal/reverser"
 )
 
 func main() {
@@ -19,13 +24,17 @@ func main() {
 
 	log.Printf("Configuration loaded: %s", *configPath)
 
-	bal := balancer.NewBalancer(*conf)
+	r := reverser.NewReverser(*conf)
+	done := setupGracefulShutdown(r)
 
-	log.Printf("Starting balancer on %s", conf.Listen)
-	err = bal.Start()
-	if err != nil {
-		log.Fatalf("Failed to start balancer: %v", err)
+	log.Printf("Starting reverser on %s", conf.Listen)
+	err = r.Start()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatalf("Failed to start reverser: %v", err)
 	}
+
+	<-done
+	log.Println("Reverser stopped gracefully")
 }
 
 func parseArgs() *string {
@@ -39,4 +48,20 @@ func parseArgs() *string {
 	flag.Parse()
 
 	return configPath
+}
+
+func setupGracefulShutdown(r *reverser.Reverser) <-chan struct{} {
+	done := make(chan struct{})
+
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+		<-sig
+		if err := r.Stop(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("Failed to stop reverser: %v", err)
+		}
+		close(done)
+	}()
+
+	return done
 }
