@@ -15,7 +15,7 @@ A simple yet to come HTTP reverse proxy & load balancer written in Go, configura
 - Supports graceful shutdown.
 - Single backend strategy (always picks the first backend).
 - ~~Easy to extend with additional load balancing strategies.~~
-- ~~cache get requests~~
+- Per configured route cache usage & configuration
 - no `httputil.ReverseProxy` here.
 
 ---
@@ -29,10 +29,15 @@ listen: "localhost:8042"
 routes:
   /:
     load_balancer_strategy: "single"
+    cache:
+      enabled: false
     backends:
       - url: "http://localhost:8080"
   /api:
     load_balancer_strategy: "single"
+    cache:
+      enabled: true
+      ttl: 60
     backends:
       - url: "http://localhost:8080"
 ```
@@ -49,6 +54,12 @@ make
 
 ```sh
 ./cmiyc -h
+```
+
+## Run Test Suite
+
+```sh
+make validate
 ```
 
 ## License

@@ -17,8 +17,14 @@ type Backend struct {
 	URL string `yaml:"url"`
 }
 
+type CacheConfig struct {
+	Enabled bool `yaml:"enabled"`
+	TTL     int  `yaml:"ttl"`
+}
+
 type Route struct {
 	LoadBalancerType LoadBalancerStrategy `yaml:"load_balancer_strategy"`
+	CacheConfig      CacheConfig          `yaml:"cache"`
 	Backends         []Backend            `yaml:"backends"`
 }
 
