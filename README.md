@@ -29,10 +29,15 @@ listen: "localhost:8042"
 routes:
   /:
     load_balancer_strategy: "single"
+    cache:
+      enabled: false
     backends:
       - url: "http://localhost:8080"
   /api:
     load_balancer_strategy: "single"
+    cache:
+      enabled: true
+      ttl: 60
     backends:
       - url: "http://localhost:8080"
 ```
