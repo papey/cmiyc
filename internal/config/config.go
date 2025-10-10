@@ -18,8 +18,10 @@ type Backend struct {
 }
 
 type CacheConfig struct {
-	Enabled bool `yaml:"enabled"`
-	TTL     int  `yaml:"ttl"`
+	Enabled      bool `yaml:"enabled"`
+	MaxSize      int  `yaml:"max_size"`
+	MaxEntrySize int  `yaml:"max_entry_size"`
+	TTL          int  `yaml:"ttl"`
 }
 
 type Route struct {
