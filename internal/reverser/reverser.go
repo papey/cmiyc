@@ -2,10 +2,12 @@ package reverser
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
 
+	"github.com/papey/cmiyc/internal/balancer"
 	"github.com/papey/cmiyc/internal/cache"
 	"github.com/papey/cmiyc/internal/config"
 	"github.com/papey/cmiyc/internal/forwarder"
@@ -16,21 +18,37 @@ type Reverser struct {
 	client *forwarder.Client
 	server *http.Server
 	caches map[string]*cache.HttpCache
+	lbs    map[string]balancer.Balancer
 }
 
 func NewReverser(cfg config.Config) *Reverser {
 	caches := make(map[string]*cache.HttpCache)
+	lbs := make(map[string]balancer.Balancer)
 
 	for k, c := range cfg.Routes {
 		if c.CacheConfig.Enabled {
 			caches[k] = cache.NewEmptyCache(c.CacheConfig.MaxSize, c.CacheConfig.MaxEntrySize)
 		}
+
+		switch c.LBConfig.Type {
+		case config.LBStrategySingle:
+			lbs[k] = balancer.NewSingleLB(c.ConfiguredURLs())
+		default:
+			fmt.Printf("Unknown load balancer strategy %s for route %s, defaulting to single", c.LBConfig.Type, k)
+			lbs[k] = balancer.NewSingleLB(c.ConfiguredURLs())
+		}
+
+	}
+
+	if len(lbs) != len(cfg.Routes) {
+		log.Fatalf("Some routes do not have a load balancer configured")
 	}
 
 	r := &Reverser{
 		config: cfg,
 		client: forwarder.NewClient(),
 		caches: caches,
+		lbs:    lbs,
 	}
 
 	return r
@@ -49,10 +67,16 @@ func (rev *Reverser) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	lb, exists := rev.getLbforRoute(matchingRoute)
+	if !exists {
+		http.Error(w, "Load balancer not found for route", http.StatusInternalServerError)
+		return
+	}
+
 	resp := cache.NewCachableResponse(w)
 
 	if !c.CacheConfig.Enabled {
-		err := rev.proxyDirect(resp, r, c)
+		err := rev.proxyDirect(resp, r, lb.Pick())
 		if err != nil {
 			log.Println(err)
 			return
@@ -63,7 +87,7 @@ func (rev *Reverser) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	routeCache, exists := rev.getCacheForRoute(matchingRoute)
 	if !exists {
-		err := rev.proxyDirect(resp, r, c)
+		err := rev.proxyDirect(resp, r, lb.Pick())
 		if err != nil {
 			log.Println(err)
 			return
@@ -72,21 +96,21 @@ func (rev *Reverser) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := rev.proxyCache(resp, r, c, routeCache)
+	err := rev.proxyCache(resp, r, c, lb.Pick(), routeCache)
 	if err != nil {
 		log.Println(err)
 	}
 }
 
-func (rev *Reverser) proxyDirect(resp *cache.CachableResponse, r *http.Request, rc *config.Route) error {
-	if err := rev.client.ProxifyAndServe(resp, r, rc.Backends[0].URL); err != nil {
+func (rev *Reverser) proxyDirect(resp *cache.CachableResponse, r *http.Request, baseURL string) error {
+	if err := rev.client.ProxifyAndServe(resp, r, baseURL); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (rev *Reverser) proxyCache(resp *cache.CachableResponse, r *http.Request, rc *config.Route, routeCache *cache.HttpCache) error {
+func (rev *Reverser) proxyCache(resp *cache.CachableResponse, r *http.Request, rc *config.Route, baseURL string, routeCache *cache.HttpCache) error {
 	isRequestCachable := cache.IsRequestCachable(r.Method)
 	if isRequestCachable {
 		served, err := routeCache.ServeIfPresent(resp.ResponseWriter, r)
@@ -99,7 +123,7 @@ func (rev *Reverser) proxyCache(resp *cache.CachableResponse, r *http.Request, r
 		}
 	}
 
-	err := rev.client.ProxifyAndServe(resp, r, rc.Backends[0].URL)
+	err := rev.client.ProxifyAndServe(resp, r, baseURL)
 	if err != nil {
 		return err
 	}
@@ -111,6 +135,11 @@ func (rev *Reverser) proxyCache(resp *cache.CachableResponse, r *http.Request, r
 	}
 
 	return nil
+}
+
+func (rev *Reverser) getLbforRoute(route string) (balancer.Balancer, bool) {
+	lb, exists := rev.lbs[route]
+	return lb, exists
 }
 
 func (rev *Reverser) getCacheForRoute(route string) (*cache.HttpCache, bool) {
