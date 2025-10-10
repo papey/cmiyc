@@ -10,7 +10,9 @@ import (
 type LoadBalancerStrategy string
 
 const (
-	LBStrategySingle LoadBalancerStrategy = "single"
+	LBStrategySingle     LoadBalancerStrategy = "single"
+	LBStrategyRandom     LoadBalancerStrategy = "random"
+	LBStrategyRoundRobin LoadBalancerStrategy = "round_robin"
 )
 
 type Backend struct {
@@ -24,10 +26,23 @@ type CacheConfig struct {
 	TTL          int  `yaml:"ttl"`
 }
 
+type LBConfig struct {
+	Type LoadBalancerStrategy `yaml:"strategy"`
+}
+
 type Route struct {
 	LoadBalancerType LoadBalancerStrategy `yaml:"load_balancer_strategy"`
 	CacheConfig      CacheConfig          `yaml:"cache"`
+	LBConfig         LBConfig             `yaml:"lb"`
 	Backends         []Backend            `yaml:"backends"`
+}
+
+func (r *Route) ConfiguredURLs() []string {
+	urls := make([]string, 0, len(r.Backends))
+	for _, b := range r.Backends {
+		urls = append(urls, b.URL)
+	}
+	return urls
 }
 
 type Config struct {

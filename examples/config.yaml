@@ -1,13 +1,15 @@
 listen: "localhost:8042"
 routes:
     /:
-      load_balancer_strategy: "single"
+      lb:
+        strategy: "single"
       cache:
         enabled: false
       backends:
         - url: "http://localhost:8080"
     /api:
-      load_balancer_strategy: "single"
+      lb:
+        strategy: "round_robin"
       cache:
         enabled: true
         max_size: 500
@@ -15,3 +17,5 @@ routes:
         ttl: 60
       backends:
         - url: "http://localhost:8081"
+        - url: "http://localhost:8082"
+        - url: "http://localhost:8083"
