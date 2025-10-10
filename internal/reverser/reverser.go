@@ -33,6 +33,8 @@ func NewReverser(cfg config.Config) *Reverser {
 		switch c.LBConfig.Type {
 		case config.LBStrategySingle:
 			lbs[k] = balancer.NewSingleLB(c.ConfiguredURLs())
+		case config.LBStrategyRandom:
+			lbs[k] = balancer.NewRandomLB(c.ConfiguredURLs(), time.Now().UnixNano())
 		default:
 			fmt.Printf("Unknown load balancer strategy %s for route %s, defaulting to single", c.LBConfig.Type, k)
 			lbs[k] = balancer.NewSingleLB(c.ConfiguredURLs())

@@ -11,6 +11,7 @@ type LoadBalancerStrategy string
 
 const (
 	LBStrategySingle LoadBalancerStrategy = "single"
+	LBStrategyRandom LoadBalancerStrategy = "random"
 )
 
 type Backend struct {
