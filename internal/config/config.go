@@ -33,7 +33,7 @@ type LBConfig struct {
 type Route struct {
 	LoadBalancerType LoadBalancerStrategy `yaml:"load_balancer_strategy"`
 	CacheConfig      CacheConfig          `yaml:"cache"`
-	LBConfig         LBConfig             `yaml:"load_balancer"`
+	LBConfig         LBConfig             `yaml:"lb"`
 	Backends         []Backend            `yaml:"backends"`
 }
 

@@ -9,7 +9,7 @@ routes:
         - url: "http://localhost:8080"
     /api:
       lb:
-        strategy: "single"
+        strategy: "round_robin"
       cache:
         enabled: true
         max_size: 500
@@ -17,3 +17,5 @@ routes:
         ttl: 60
       backends:
         - url: "http://localhost:8081"
+        - url: "http://localhost:8082"
+        - url: "http://localhost:8083"
