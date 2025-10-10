@@ -56,6 +56,8 @@ func (c *Client) ProxifyAndServe(w http.ResponseWriter, r *http.Request, dest st
 		}
 	}
 
+	addCacheHeaderOnCachableRequests(r.Method, w.Header())
+
 	w.WriteHeader(resp.StatusCode)
 	_, err = io.Copy(w, resp.Body)
 	return err
@@ -76,6 +78,12 @@ func (c *Client) proxify(r *http.Request, dest string) (*http.Response, error) {
 	req.Host = backendURL.Host
 
 	return c.client.Do(req)
+}
+
+func addCacheHeaderOnCachableRequests(method string, h http.Header) {
+	if method == http.MethodHead || method == http.MethodGet {
+		h.Set("X-Cache", "MISS")
+	}
 }
 
 func buildURLs(r *http.Request, dest string) (*url.URL, *url.URL, error) {

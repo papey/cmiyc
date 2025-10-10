@@ -13,10 +13,11 @@ type Entry struct {
 }
 
 func NewEntry(request *http.Request, resp *CachableResponse, expiresAt time.Time) (Key, Entry) {
+
 	return KeyFrom(request), Entry{
 		StatusCode: resp.StatusCode,
 		Body:       resp.Body.Bytes(),
-		Header:     cloneHeader(resp.Header()),
+		Header:     ensureCacheHitHeader(cloneHeader(resp.Header())),
 		ExpiresAt:  expiresAt,
 	}
 }
@@ -31,6 +32,11 @@ func (entry *Entry) Clone() Entry {
 		Header:     cloneHeader(entry.Header),
 		ExpiresAt:  entry.ExpiresAt,
 	}
+}
+
+func ensureCacheHitHeader(h http.Header) http.Header {
+	h.Set("X-Cache", "HIT")
+	return h
 }
 
 func (entry *Entry) WriteResponse(w http.ResponseWriter, r *http.Request) error {
