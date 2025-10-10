@@ -79,5 +79,5 @@ func (cr *CachableResponse) IsCachableConsideringAuth() bool {
 }
 
 func IsRequestCachable(requestMethod string) bool {
-	return requestMethod == http.MethodGet
+	return requestMethod == http.MethodGet || requestMethod == http.MethodHead
 }

@@ -99,3 +99,33 @@ func TestIsCachableConsideringAuth(t *testing.T) {
 		t.Errorf("expected IsCachableConsideringAuth() to return true for cachable header")
 	}
 }
+
+func TestCachableResponseHeadRequest(t *testing.T) {
+	rec := httptest.NewRecorder()
+	cr := NewCachableResponse(rec)
+
+	httptest.NewRequest("HEAD", "http://example.com", nil)
+
+	data := []byte("this should not be stored")
+	n, err := cr.Write(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if n != len(data) {
+		t.Errorf("expected %d bytes written, got %d", len(data), n)
+	}
+
+	if got := cr.Body.Len(); got != len(data) {
+		t.Errorf("expected Body buffer to contain %d bytes, got %d", len(data), got)
+	}
+
+	cr.WriteHeader(http.StatusOK)
+	if cr.StatusCode != http.StatusOK {
+		t.Errorf("expected StatusCode 200, got %d", cr.StatusCode)
+	}
+
+	cr.Header().Set("X-Test", "value")
+	if cr.Header().Get("X-Test") != "value" {
+		t.Errorf("expected header X-Test=value, got %s", cr.Header().Get("X-Test"))
+	}
+}

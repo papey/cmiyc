@@ -8,28 +8,18 @@ import (
 	"time"
 )
 
-// Minimal struct to replace CachableResponse in tests
-type simpleResponse struct {
-	StatusCode int
-	Body       []byte
-	Header     http.Header
-}
-
 func TestNewEntry(t *testing.T) {
 	req := httptest.NewRequest("GET", "http://example.com", nil)
-	resp := simpleResponse{
-		StatusCode: 200,
-		Body:       []byte("Hello"),
-		Header:     http.Header{"Content-Type": []string{"text/plain"}},
-	}
-	expiration := time.Now().Add(time.Minute)
+	rec := httptest.NewRecorder()
 
-	key, entry := KeyFrom(req), Entry{
-		StatusCode: resp.StatusCode,
-		Body:       resp.Body,
-		Header:     cloneHeader(resp.Header),
-		ExpiresAt:  expiration,
-	}
+	// Use the real CachableResponse
+	resp := NewCachableResponse(rec)
+	resp.WriteHeader(200)
+	_, _ = resp.Write([]byte("Hello"))
+	resp.Header().Set("Content-Type", "text/plain")
+
+	expiration := time.Now().Add(time.Minute)
+	key, entry := NewEntry(req, resp, expiration)
 
 	if entry.StatusCode != 200 {
 		t.Errorf("expected status 200, got %d", entry.StatusCode)
@@ -41,6 +31,10 @@ func TestNewEntry(t *testing.T) {
 
 	if entry.Header.Get("Content-Type") != "text/plain" {
 		t.Errorf("expected header Content-Type=text/plain, got %s", entry.Header.Get("Content-Type"))
+	}
+
+	if entry.Header.Get("X-Cache") != "HIT" {
+		t.Errorf("expected header X-Cache=HIT, got %s", entry.Header.Get("X-Cache"))
 	}
 
 	if !entry.ExpiresAt.Equal(expiration) {
@@ -56,7 +50,7 @@ func TestWriteResponse(t *testing.T) {
 	entry := Entry{
 		StatusCode: 200,
 		Body:       []byte("Hello World"),
-		Header:     http.Header{"X-Test": []string{"value"}},
+		Header:     http.Header{"X-Test": []string{"value"}, "X-Cache": []string{"HIT"}},
 	}
 
 	rec := httptest.NewRecorder()
@@ -76,6 +70,10 @@ func TestWriteResponse(t *testing.T) {
 
 	if res.Header.Get("X-Test") != "value" {
 		t.Errorf("expected header X-Test=value, got %s", res.Header.Get("X-Test"))
+	}
+
+	if res.Header.Get("X-Cache") != "HIT" {
+		t.Errorf("expected header X-Cache=HIT, got %s", res.Header.Get("X-Cache"))
 	}
 
 	buf := new(bytes.Buffer)
