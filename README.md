@@ -4,7 +4,7 @@
     <img src="LOGO.jpg" width="240" alt="logo"/>
 </p>
 
-A simple yet to come HTTP reverse proxy & load balancer written in Go, configurable via YAML. Supports multiple routes and backends with pluggable load balancing strategies.
+A HTTP reverse proxy & load balancer written in Go, configurable via YAML. Supports multiple routes and backends ~~with pluggable load balancing strategies.~~
 
 ---
 
