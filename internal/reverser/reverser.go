@@ -23,7 +23,7 @@ func NewReverser(cfg config.Config) *Reverser {
 
 	for k, c := range cfg.Routes {
 		if c.CacheConfig.Enabled {
-			caches[k] = cache.NewEmptyCache()
+			caches[k] = cache.NewEmptyCache(c.CacheConfig.MaxSize, c.CacheConfig.MaxEntrySize)
 		}
 	}
 
@@ -133,6 +133,10 @@ const gracefulWait = 15 * time.Second
 func (rev *Reverser) Stop() error {
 	if rev.server == nil {
 		return nil
+	}
+
+	for _, c := range rev.caches {
+		c.Cleanup()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), gracefulWait)
