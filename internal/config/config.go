@@ -10,8 +10,9 @@ import (
 type LoadBalancerStrategy string
 
 const (
-	LBStrategySingle LoadBalancerStrategy = "single"
-	LBStrategyRandom LoadBalancerStrategy = "random"
+	LBStrategySingle     LoadBalancerStrategy = "single"
+	LBStrategyRandom     LoadBalancerStrategy = "random"
+	LBStrategyRoundRobin LoadBalancerStrategy = "round_robin"
 )
 
 type Backend struct {
